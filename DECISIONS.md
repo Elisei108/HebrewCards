@@ -74,6 +74,13 @@
 **Импорт из файла:** importFromFile(fileName, fileContent) — название колоды из имени файла без .csv
 **Шрифт поля иврита:** HeeboFontFamily, textAlign = Right, singleLine
 
+### [2026-06-16] Геймификация — стрики и серии
+**Решение:** Стрик (дней подряд) хранится в SharedPreferences: streak_current, streak_max, streak_last_date (yyyy-MM-dd)
+**Серия (карточек без ошибок):** currentStreak/maxStreak в StudyUiState; инкремент в swipeRight(), сброс в swipeLeft() и recordError()
+**updateStreak():** вызывается в конце saveSession() в StudyViewModel
+**Дашборд:** DashboardViewModel читает streak из prefs; StatsCard показывает 🔥 currentStreak и ⚡ maxStreak
+**Коммит:** 494573b
+
 ### [2026-06-16] Количество слов за сессию
 **Решение:** SharedPreferences ключ "session_size" (Int, default 0 = все); StudyViewModel читает при loadQueue() и обрезает очередь через queue.take(sessionSize)
 **Значения:** 0 = все, 10 = десять, 20 = двадцать
@@ -135,7 +142,7 @@ git push
 
 1. ~~**Демо-колода при первом запуске**~~ ✅ коммит f92aefd
 2. ~~**Ручное добавление + импорт из файла**~~ ✅ коммит 424f204
-3. **Геймификация** — 🔥 и ⚡ на дашборде показывают "—"
+3. ~~**Геймификация**~~ ✅ коммит b6f65b9
 4. **Экспорт/импорт резервной копии**
 5. **Глагольные карточки**
 
