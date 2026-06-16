@@ -13,22 +13,37 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+// Одна пара для ручного добавления
+data class ManualCardPair(
+    val id: Int,           // локальный id для LazyColumn key
+    val hebrew: String  = "",
+    val russian: String = ""
+)
+
 data class AddDeckUiState(
     val deckName: String         = "",
     val csvText: String          = "",
     val isLoading: Boolean       = false,
     val errorMessage: String?    = null,
-    val importedDeckId: Long?    = null  // не null = успех, переходим на экран колоды
+    val importedDeckId: Long?    = null,  // не null = успех, переходим назад
+
+    // Состояние ручного добавления
+    val showManualSheet: Boolean         = false,
+    val manualDeckName: String           = "",
+    val manualCards: List<ManualCardPair> = listOf(ManualCardPair(id = 0)),
+    val manualError: String?             = null
 )
 
 class AddDeckViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val db       = AppDatabase.getInstance(application)
-    private val repo     = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao())
-    private val useCase  = ImportDeckUseCase(repo)
+    private val db      = AppDatabase.getInstance(application)
+    private val repo    = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao())
+    private val useCase = ImportDeckUseCase(repo)
 
     private val _uiState = MutableStateFlow(AddDeckUiState())
     val uiState: StateFlow<AddDeckUiState> = _uiState.asStateFlow()
+
+    // ── CSV-импорт ──────────────────────────────────────────────────────────
 
     fun onDeckNameChange(value: String) {
         _uiState.update { it.copy(deckName = value, errorMessage = null) }
@@ -41,25 +56,125 @@ class AddDeckViewModel(application: Application) : AndroidViewModel(application)
     fun importDeck() {
         val state = _uiState.value
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-
         viewModelScope.launch {
-            val result = useCase.execute(state.deckName.trim(), state.csvText)
-            when (result) {
-                is ImportResult.Success -> {
-                    _uiState.update {
-                        it.copy(isLoading = false, importedDeckId = result.deckId)
-                    }
-                }
-                is ImportResult.Error -> {
-                    _uiState.update {
-                        it.copy(isLoading = false, errorMessage = result.message)
-                    }
-                }
+            when (val result = useCase.execute(state.deckName.trim(), state.csvText)) {
+                is ImportResult.Success ->
+                    _uiState.update { it.copy(isLoading = false, importedDeckId = result.deckId) }
+                is ImportResult.Error ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+            }
+        }
+    }
+
+    // Импорт из файла — получаем текст файла снаружи, название из имени файла
+    fun importFromFile(fileName: String, fileContent: String) {
+        // Берём имя файла без расширения как название колоды (можно будет поменять)
+        val deckName = fileName.removeSuffix(".csv").replace("_", " ").trim()
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = useCase.execute(deckName, fileContent)) {
+                is ImportResult.Success ->
+                    _uiState.update { it.copy(isLoading = false, importedDeckId = result.deckId) }
+                is ImportResult.Error ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
             }
         }
     }
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    // ── Ручное добавление ───────────────────────────────────────────────────
+
+    fun openManualSheet() {
+        _uiState.update {
+            it.copy(
+                showManualSheet = true,
+                manualDeckName  = "",
+                manualCards     = listOf(ManualCardPair(id = 0)),
+                manualError     = null
+            )
+        }
+    }
+
+    fun closeManualSheet() {
+        _uiState.update { it.copy(showManualSheet = false) }
+    }
+
+    fun onManualDeckNameChange(value: String) {
+        _uiState.update { it.copy(manualDeckName = value, manualError = null) }
+    }
+
+    // Обновить иврит в паре по id
+    fun onManualHebrewChange(id: Int, value: String) {
+        _uiState.update { state ->
+            state.copy(
+                manualCards = state.manualCards.map { if (it.id == id) it.copy(hebrew = value) else it },
+                manualError = null
+            )
+        }
+    }
+
+    // Обновить перевод в паре по id
+    fun onManualRussianChange(id: Int, value: String) {
+        _uiState.update { state ->
+            state.copy(
+                manualCards = state.manualCards.map { if (it.id == id) it.copy(russian = value) else it },
+                manualError = null
+            )
+        }
+    }
+
+    // Добавить новую пустую пару
+    fun addManualCard() {
+        _uiState.update { state ->
+            val nextId = (state.manualCards.maxOfOrNull { it.id } ?: 0) + 1
+            state.copy(manualCards = state.manualCards + ManualCardPair(id = nextId))
+        }
+    }
+
+    // Удалить пару по id (минимум одна пара остаётся)
+    fun removeManualCard(id: Int) {
+        _uiState.update { state ->
+            if (state.manualCards.size <= 1) return@update state
+            state.copy(manualCards = state.manualCards.filter { it.id != id })
+        }
+    }
+
+    // Сохранить ручную колоду — конвертируем пары в CSV и вызываем ImportDeckUseCase
+    fun saveManualDeck() {
+        val state = _uiState.value
+
+        if (state.manualDeckName.isBlank()) {
+            _uiState.update { it.copy(manualError = "Введите название колоды") }
+            return
+        }
+
+        // Оставляем только заполненные пары
+        val validPairs = state.manualCards.filter {
+            it.hebrew.isNotBlank() && it.russian.isNotBlank()
+        }
+
+        if (validPairs.isEmpty()) {
+            _uiState.update { it.copy(manualError = "Добавьте хотя бы одну карточку") }
+            return
+        }
+
+        // Собираем CSV из пар
+        val csv = validPairs.joinToString("\n") { "${it.hebrew};${it.russian}" }
+
+        _uiState.update { it.copy(isLoading = true, manualError = null) }
+
+        viewModelScope.launch {
+            when (val result = useCase.execute(state.manualDeckName.trim(), csv)) {
+                is ImportResult.Success ->
+                    _uiState.update {
+                        it.copy(isLoading = false, showManualSheet = false, importedDeckId = result.deckId)
+                    }
+                is ImportResult.Error ->
+                    _uiState.update { it.copy(isLoading = false, manualError = result.message) }
+            }
+        }
     }
 }
