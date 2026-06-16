@@ -27,6 +27,8 @@ class DeckRepository(
 
     suspend fun getDeckCount(): Int = deckDao.getDeckCount()
 
+    suspend fun getAllDecksOnce(): List<Deck> = deckDao.getAllDecksOnce()
+
     suspend fun getCountByStatus(deckId: Long, status: CardStatus): Int =
         progressDao.getCountByStatus(deckId, status)
 

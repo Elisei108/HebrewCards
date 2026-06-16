@@ -25,4 +25,8 @@ interface DeckDao {
     // Количество колод — для определения первого запуска
     @Query("SELECT COUNT(*) FROM decks")
     suspend fun getDeckCount(): Int
+
+    // Все колоды одним снимком (для экспорта)
+    @Query("SELECT * FROM decks ORDER BY createdAt ASC")
+    suspend fun getAllDecksOnce(): List<Deck>
 }

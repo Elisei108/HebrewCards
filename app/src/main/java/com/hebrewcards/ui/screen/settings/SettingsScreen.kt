@@ -17,8 +17,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.hebrewcards.BuildConfig
+import com.hebrewcards.data.db.AppDatabase
+import com.hebrewcards.data.repository.DeckRepository
+import com.hebrewcards.domain.usecase.ExportDeckUseCase
+import com.hebrewcards.domain.usecase.ExportResult
 import com.hebrewcards.ui.theme.*
 import com.hebrewcards.util.TtsManager
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,6 +39,18 @@ fun SettingsScreen(
 
     val prefs = remember { context.getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE) }
 
+    // Для экспорта колод
+    val scope           = rememberCoroutineScope()
+    val snackbarState   = remember { SnackbarHostState() }
+    var isExporting     by remember { mutableStateOf(false) }
+    val db              = remember { AppDatabase.getInstance(context) }
+    val exportUseCase   = remember {
+        ExportDeckUseCase(
+            DeckRepository(db.deckDao(), db.cardDao(), db.progressDao()),
+            db
+        )
+    }
+
     // Тема
     var isDarkTheme    by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
     // Выбранный TTS движок (пустая строка = системный по умолчанию)
@@ -45,6 +62,7 @@ fun SettingsScreen(
 
     Scaffold(
         containerColor = colors.background,
+        snackbarHost   = { SnackbarHost(snackbarState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -162,7 +180,53 @@ fun SettingsScreen(
                 }
             }
 
-            // Карточка 4 — О приложении
+            // Карточка 4 — Данные (экспорт)
+            Card(
+                shape  = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text       = "Данные",
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = colors.textSecondary,
+                        modifier   = Modifier.padding(bottom = 12.dp)
+                    )
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                isExporting = true
+                                val result = exportUseCase.exportAll(context)
+                                isExporting = false
+                                val message = when (result) {
+                                    is ExportResult.Success ->
+                                        "Экспортировано ${result.fileCount} колод → папка ${result.folderPath}"
+                                    is ExportResult.Error   -> result.message
+                                }
+                                snackbarState.showSnackbar(message)
+                            }
+                        },
+                        enabled  = !isExporting,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors   = ButtonDefaults.buttonColors(containerColor = ColorWriting)
+                    ) {
+                        if (isExporting) {
+                            CircularProgressIndicator(
+                                color    = colors.background,
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Экспорт...", color = colors.background)
+                        } else {
+                            Text("📤 Экспортировать колоды", color = colors.background)
+                        }
+                    }
+                }
+            }
+
+            // Карточка 5 — О приложении
             Card(
                 shape  = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.surface)
