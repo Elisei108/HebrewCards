@@ -24,9 +24,10 @@ import com.hebrewcards.util.TtsManager
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    onThemeChange:  (Boolean) -> Unit = {},
-    onEngineChange: (String)  -> Unit = {},
-    onSpeedChange:  (Float)   -> Unit = {}
+    onThemeChange:       (Boolean) -> Unit = {},
+    onEngineChange:      (String)  -> Unit = {},
+    onSpeedChange:       (Float)   -> Unit = {},
+    onSessionSizeChange: (Int)     -> Unit = {}
 ) {
     val context = LocalContext.current
     val colors  = LocalAppColors.current
@@ -38,7 +39,9 @@ fun SettingsScreen(
     // Выбранный TTS движок (пустая строка = системный по умолчанию)
     var selectedEngine by remember { mutableStateOf(prefs.getString("tts_engine", "") ?: "") }
     // Скорость речи (1.0f = нормально, 0.7f = медленно)
-    var selectedSpeed  by remember { mutableStateOf(prefs.getFloat("tts_speed", 1.0f)) }
+    var selectedSpeed       by remember { mutableStateOf(prefs.getFloat("tts_speed", 1.0f)) }
+    // Количество слов за сессию (0 = все)
+    var selectedSessionSize by remember { mutableStateOf(prefs.getInt("session_size", 0)) }
 
     Scaffold(
         containerColor = colors.background,
@@ -117,7 +120,49 @@ fun SettingsScreen(
                 }
             )
 
-            // Карточка 3 — О приложении
+            // Карточка 3 — Обучение
+            Card(
+                shape  = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.surface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text       = "Обучение",
+                        fontSize   = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color      = colors.textSecondary,
+                        modifier   = Modifier.padding(bottom = 12.dp)
+                    )
+                    Text(
+                        text     = "Количество слов за сессию",
+                        fontSize = 13.sp,
+                        color    = colors.textSecondary,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    listOf(10 to "10 слов", 20 to "20 слов", 0 to "Все").forEach { (size, label) ->
+                        Row(
+                            modifier          = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedSessionSize == size,
+                                onClick  = {
+                                    selectedSessionSize = size
+                                    prefs.edit().putInt("session_size", size).apply()
+                                    onSessionSizeChange(size)
+                                },
+                                colors = RadioButtonDefaults.colors(selectedColor = ColorFlashcard)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, fontSize = 15.sp, color = colors.textPrimary)
+                        }
+                    }
+                }
+            }
+
+            // Карточка 4 — О приложении
             Card(
                 shape  = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = colors.surface)

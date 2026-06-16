@@ -1,6 +1,7 @@
 package com.hebrewcards.ui.screen.study
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hebrewcards.data.db.AppDatabase
@@ -54,6 +55,10 @@ class StudyViewModel(
 
     private fun loadQueue() {
         viewModelScope.launch {
+            // Читаем ограничение сессии из настроек (0 = без ограничений)
+            val prefs       = getApplication<Application>().getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE)
+            val sessionSize = prefs.getInt("session_size", 0)
+
             val cards    = db.cardDao().getCardsByDeckOnce(deckId)
             val progList = db.progressDao().getProgressByDeckOnce(deckId)
             val progMap  = progList.associateBy { it.cardId }
@@ -70,7 +75,10 @@ class StudyViewModel(
                 StudyCard(card, prog)
             }
 
-            val queue = buildQueue(studyCards)
+            var queue = buildQueue(studyCards)
+            // Обрезаем очередь до заданного размера сессии
+            if (sessionSize > 0) queue = queue.take(sessionSize)
+
             _uiState.update {
                 it.copy(
                     remaining    = queue,

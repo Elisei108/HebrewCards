@@ -30,9 +30,10 @@ object Routes {
 
 @Composable
 fun HebrewCardsNavGraph(
-    onThemeChange:  (Boolean) -> Unit = {},
-    onEngineChange: (String)  -> Unit = {},
-    onSpeedChange:  (Float)   -> Unit = {}
+    onThemeChange:       (Boolean) -> Unit = {},
+    onEngineChange:      (String)  -> Unit = {},
+    onSpeedChange:       (Float)   -> Unit = {},
+    onSessionSizeChange: (Int)     -> Unit = {}
 ) {
     val navController = rememberNavController()
 
@@ -72,10 +73,11 @@ fun HebrewCardsNavGraph(
 
         composable(Routes.SETTINGS) {
             SettingsScreen(
-                navController  = navController,
-                onThemeChange  = onThemeChange,
-                onEngineChange = onEngineChange,
-                onSpeedChange  = onSpeedChange
+                navController       = navController,
+                onThemeChange       = onThemeChange,
+                onEngineChange      = onEngineChange,
+                onSpeedChange       = onSpeedChange,
+                onSessionSizeChange = onSessionSizeChange
             )
         }
 
