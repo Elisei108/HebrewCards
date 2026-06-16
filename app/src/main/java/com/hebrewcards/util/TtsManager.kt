@@ -69,6 +69,11 @@ class TtsManager(private val context: Context) {
         tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "hc_word")
     }
 
+    // Переинициализирует TTS с новым движком — смена применяется сразу
+    fun reinit(enginePackage: String) {
+        init(enginePackage = enginePackage)
+    }
+
     fun setSpeechRate(rate: Float) {
         speechRate = rate
         tts?.setSpeechRate(rate)

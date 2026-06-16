@@ -24,14 +24,18 @@ import com.hebrewcards.util.TtsManager
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    onThemeChange: (Boolean) -> Unit = {}
+    onThemeChange:  (Boolean) -> Unit = {},
+    onEngineChange: (String)  -> Unit = {}
 ) {
     val context = LocalContext.current
     val colors  = LocalAppColors.current
 
-    // Читаем текущее значение темы из SharedPreferences
-    val prefs       = remember { context.getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE) }
-    var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
+    val prefs = remember { context.getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE) }
+
+    // Тема
+    var isDarkTheme    by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
+    // Выбранный TTS движок (пустая строка = системный по умолчанию)
+    var selectedEngine by remember { mutableStateOf(prefs.getString("tts_engine", "") ?: "") }
 
     Scaffold(
         containerColor = colors.background,
@@ -94,7 +98,15 @@ fun SettingsScreen(
             }
 
             // Карточка 2 — Звук (TTS)
-            TtsCard(colors = colors)
+            TtsCard(
+                colors         = colors,
+                selectedEngine = selectedEngine,
+                onEngineChange = { pkg ->
+                    selectedEngine = pkg
+                    prefs.edit().putString("tts_engine", pkg).apply()
+                    onEngineChange(pkg)
+                }
+            )
 
             // Карточка 3 — О приложении
             Card(
@@ -124,12 +136,15 @@ fun SettingsScreen(
 
 // Вынесен отдельно, чтобы TtsManager создавался единожды внутри remember
 @Composable
-private fun TtsCard(colors: AppColors) {
+private fun TtsCard(
+    colors: AppColors,
+    selectedEngine: String,
+    onEngineChange: (String) -> Unit
+) {
     val context = LocalContext.current
     val engines = remember {
         TtsManager(context.applicationContext).getAvailableEngines()
     }
-    var selectedEngine by remember { mutableStateOf(engines.firstOrNull()?.name ?: "") }
 
     Card(
         shape  = RoundedCornerShape(18.dp),
@@ -159,7 +174,7 @@ private fun TtsCard(colors: AppColors) {
                     ) {
                         RadioButton(
                             selected = selectedEngine == engine.name,
-                            onClick  = { selectedEngine = engine.name },
+                            onClick  = { onEngineChange(engine.name) },
                             colors   = RadioButtonDefaults.colors(selectedColor = ColorFlashcard)
                         )
                         Spacer(Modifier.width(8.dp))

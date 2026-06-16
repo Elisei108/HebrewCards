@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.hebrewcards.ui.navigation.HebrewCardsNavGraph
 import com.hebrewcards.ui.theme.HebrewCardsTheme
+import com.hebrewcards.util.TtsManager
 
 private const val PREFS_NAME    = "hebrewcards_prefs"
 private const val KEY_DARK_THEME = "is_dark_theme"
@@ -26,13 +27,17 @@ class MainActivity : ComponentActivity() {
             // Читаем сохранённое значение темы; по умолчанию — тёмная
             var isDarkTheme by remember { mutableStateOf(prefs.getBoolean(KEY_DARK_THEME, true)) }
 
+            // TTS-менеджер уровня Activity для смены движка без перезапуска
+            val ttsManager = remember { TtsManager(applicationContext) }
+
             HebrewCardsTheme(darkTheme = isDarkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     HebrewCardsNavGraph(
-                        onThemeChange = { isDark ->
+                        onThemeChange  = { isDark ->
                             isDarkTheme = isDark
                             prefs.edit().putBoolean(KEY_DARK_THEME, isDark).apply()
-                        }
+                        },
+                        onEngineChange = { pkg -> ttsManager.reinit(pkg) }
                     )
                 }
             }
