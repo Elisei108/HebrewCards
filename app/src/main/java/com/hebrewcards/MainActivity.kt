@@ -37,7 +37,8 @@ class MainActivity : ComponentActivity() {
                             isDarkTheme = isDark
                             prefs.edit().putBoolean(KEY_DARK_THEME, isDark).apply()
                         },
-                        onEngineChange = { pkg -> ttsManager.reinit(pkg) }
+                        onEngineChange = { pkg  -> ttsManager.reinit(pkg) },
+                        onSpeedChange  = { rate -> ttsManager.setSpeed(rate) }
                     )
                 }
             }

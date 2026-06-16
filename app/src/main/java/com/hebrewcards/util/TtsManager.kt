@@ -79,6 +79,11 @@ class TtsManager(private val context: Context) {
         tts?.setSpeechRate(rate)
     }
 
+    // Публичный API для смены скорости из настроек
+    fun setSpeed(rate: Float) {
+        setSpeechRate(rate)
+    }
+
     fun shutdown() {
         tts?.stop()
         tts?.shutdown()

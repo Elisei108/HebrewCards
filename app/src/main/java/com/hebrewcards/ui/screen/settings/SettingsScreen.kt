@@ -25,7 +25,8 @@ import com.hebrewcards.util.TtsManager
 fun SettingsScreen(
     navController: NavController,
     onThemeChange:  (Boolean) -> Unit = {},
-    onEngineChange: (String)  -> Unit = {}
+    onEngineChange: (String)  -> Unit = {},
+    onSpeedChange:  (Float)   -> Unit = {}
 ) {
     val context = LocalContext.current
     val colors  = LocalAppColors.current
@@ -36,6 +37,8 @@ fun SettingsScreen(
     var isDarkTheme    by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
     // Выбранный TTS движок (пустая строка = системный по умолчанию)
     var selectedEngine by remember { mutableStateOf(prefs.getString("tts_engine", "") ?: "") }
+    // Скорость речи (1.0f = нормально, 0.7f = медленно)
+    var selectedSpeed  by remember { mutableStateOf(prefs.getFloat("tts_speed", 1.0f)) }
 
     Scaffold(
         containerColor = colors.background,
@@ -105,6 +108,12 @@ fun SettingsScreen(
                     selectedEngine = pkg
                     prefs.edit().putString("tts_engine", pkg).apply()
                     onEngineChange(pkg)
+                },
+                selectedSpeed  = selectedSpeed,
+                onSpeedChange  = { rate ->
+                    selectedSpeed = rate
+                    prefs.edit().putFloat("tts_speed", rate).apply()
+                    onSpeedChange(rate)
                 }
             )
 
@@ -139,7 +148,9 @@ fun SettingsScreen(
 private fun TtsCard(
     colors: AppColors,
     selectedEngine: String,
-    onEngineChange: (String) -> Unit
+    onEngineChange: (String) -> Unit,
+    selectedSpeed: Float,
+    onSpeedChange: (Float) -> Unit
 ) {
     val context = LocalContext.current
     val engines = remember {
@@ -158,6 +169,8 @@ private fun TtsCard(
                 color      = colors.textSecondary,
                 modifier   = Modifier.padding(bottom = 12.dp)
             )
+
+            // Список TTS движков
             if (engines.isEmpty()) {
                 Text(
                     text     = "Нет доступных TTS движков",
@@ -180,6 +193,42 @@ private fun TtsCard(
                         Spacer(Modifier.width(8.dp))
                         Text(engine.label, fontSize = 15.sp, color = colors.textPrimary)
                     }
+                }
+            }
+
+            // Секция скорости речи
+            HorizontalDivider(
+                modifier  = Modifier.padding(vertical = 8.dp),
+                color     = colors.border
+            )
+            Text(
+                text     = "Скорость речи",
+                fontSize = 13.sp,
+                color    = colors.textSecondary,
+                modifier = Modifier.padding(bottom = 4.dp)
+            )
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier          = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedSpeed == 1.0f,
+                        onClick  = { onSpeedChange(1.0f) },
+                        colors   = RadioButtonDefaults.colors(selectedColor = ColorFlashcard)
+                    )
+                    Text("Нормально", fontSize = 15.sp, color = colors.textPrimary)
+                }
+                Row(
+                    modifier          = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = selectedSpeed == 0.7f,
+                        onClick  = { onSpeedChange(0.7f) },
+                        colors   = RadioButtonDefaults.colors(selectedColor = ColorFlashcard)
+                    )
+                    Text("Медленно", fontSize = 15.sp, color = colors.textPrimary)
                 }
             }
         }
