@@ -30,128 +30,115 @@
 **Причина:** Android Studio создаёт gradlew и wrapper автоматически — нужен был шаблон от IDE
 
 ### [2026-06-15] presentSingularPlain в VerbCard
-**Проблема:** для проверки написания нужна plain-версия формы настоящего времени
 **Решение:** добавили поле presentSingularPlain в entity VerbCard
-**Причина:** проверка всегда без огласовок — нужны plain-версии для обоих полей глагола
+**Причина:** проверка всегда без огласовок
 
 ### [2026-06-15] Все режимы в одном StudyScreen.kt
-**Проблема:** спецификация описывала отдельные файлы (FlashcardScreen, WritingScreen и т.д.)
-**Решение:** все режимы реализованы внутри одного StudyScreen.kt через when(mode)
-**Причина:** единый ViewModel, меньше файлов, проще навигация
+**Решение:** все режимы внутри одного файла через when(mode)
+**Причина:** единый ViewModel, меньше файлов
 
 ### [2026-06-16] Автовоспроизведение TTS в диктанте
-**Проблема:** CLAUDE.md говорит "TTS только по кнопке", но диктант без автовоспроизведения не имеет смысла
-**Решение:** в режиме DICTATION TTS воспроизводит слово автоматически при смене карточки (LaunchedEffect)
-**Причина:** диктант — единственное исключение из правила, смысл режима именно в этом
+**Решение:** LaunchedEffect в DictationContent
+**Причина:** единственное исключение из правила "TTS только по кнопке"
 
 ### [2026-06-16] Icons.Filled.VolumeUp — предупреждение компилятора
-**Проблема:** два предупреждения DEPRECATION в StudyScreen.kt строки 444 и 839
-**Решение:** оставить как есть — Icons.AutoMirrored.Filled.VolumeUp не существует в Compose BOM 2025.05.01
-**Причина:** предупреждения не влияют на работу, не критично для MVP
+**Решение:** оставить как есть, не критично
+
+### [2026-06-16] GitHub репозиторий
+**Решение:** https://github.com/Elisei108/HebrewCards.git, ветка main
+
+### [2026-06-16] buildConfig = true в app/build.gradle.kts
+**Причина:** в новых версиях AGP BuildConfig отключён по умолчанию
+
+### [2026-06-16] StatsScreen переиспользует DashboardViewModel
+**Решение:** StatsScreen принимает vm: DashboardViewModel = viewModel()
+
+### [2026-06-16] Смена темы через колбэк из MainActivity
+**Решение:** isDarkTheme в mutableStateOf, onThemeChange через NavGraph → SettingsScreen
+
+### [2026-06-16] TtsManager.reinit() для смены движка
+**Решение:** reinit(enginePackage) — закрывает старый TTS, инициализирует новый
+
+### [2026-06-16] Скорость TTS через setSpeed()
+**Решение:** TtsManager.speechRate: Float, setSpeed(rate), speak() использует speechRate
+**Ключ SharedPreferences:** "tts_speed" (Float, default 1.0f)
+
+### [2026-06-16] Количество слов за сессию
+**Решение:** SharedPreferences ключ "session_size" (Int, default 0 = все); StudyViewModel читает при loadQueue() и обрезает очередь через queue.take(sessionSize)
+**Значения:** 0 = все, 10 = десять, 20 = двадцать
 
 ---
 
-## Статус файлов — актуально на 2026-06-16 (после BUILD SUCCESSFUL)
+## Рабочий процесс с git
+
+```
+Set-Location "C:\Users\Govinda\AndroidStudioProjects\HebrewCards2"
+git add .
+git commit -m "описание что сделано"
+git push
+```
+
+---
+
+## Статус файлов — актуально на 2026-06-16
 
 ### ГОТОВО — не трогать без необходимости
 
-**data/db/entity/**
-- Card.kt — id, deckId, hebrew, hebrewPlain, russian, transliteration, position
-- CardProgress.kt — cardId, deckId, status (NEW/LEARNING/KNOWN), errorCount, correctStreak, lastStudiedAt
-- Deck.kt — id, name, type (REGULAR/VERB), createdAt, lastStudiedAt
-- SessionResult.kt — id, deckId, mode, totalCards, correctCount, errorCount, durationSeconds, completedAt
-- VerbCard.kt — cardId, binyan, root, presentSingular, presentSingularPlain, conjugationJson
-
-**data/db/dao/**
-- CardDao.kt — getCardsByDeck (Flow), getCardsByDeckOnce (suspend), insertCards, deleteCard
-- DeckDao.kt — getAllDecks (Flow), getDeckById (suspend), getDeckByIdFlow (Flow), insertDeck, updateDeck, deleteDeck
-- ProgressDao.kt — getProgress, getProgressByDeck (Flow), getProgressByDeckOnce, upsertProgress, insertSessionResult, getSessionsByDeck, getSessionCountSince, getTotalCorrectCount
-
-**data/db/**
-- AppDatabase.kt — Room база, singleton
-- Converters.kt — DeckType, StudyMode, CardStatus конвертеры
-
-**data/repository/**
-- DeckRepository.kt — getDeckById, getAllDecks, getDeckSummary (→ DeckProgress), insertDeck, updateDeck, deleteDeck, resetDeckProgress
-- ProgressRepository.kt — getProgress, upsertProgress, insertSessionResult, getSessionCountToday, getTotalCorrectCount
-
-**domain/model/**
-- DeckType.kt — REGULAR, VERB
-- StudyMode.kt — FLASHCARD, WRITING, DICTATION, CHOICE
-
-**domain/usecase/**
-- ImportDeckUseCase.kt — парсит CSV (обычный и #VERB), вставляет в БД
+**data/** — все entity, DAO, репозитории — без изменений
 
 **util/**
 - Transliterator.kt — stripNiqqud(), transliterate()
-- TtsManager.kt — init(onReady), speak(text), getAvailableEngines(), shutdown()
+- TtsManager.kt ✅ — init(onReady), reinit(enginePackage), speak(text), setSpeed(rate), getAvailableEngines(), shutdown()
 
-**ui/theme/**
-- Color.kt — все цвета (тёмная/светлая тема, акценты режимов, свайп, проверка, деструктивные)
-- Theme.kt — HebrewCardsTheme, LocalAppColors, AppColors, светлая и тёмная тема
-- Type.kt — HebrewTextStyle (cardWord, input, hint, letterCheck), HebrewTextSize
+**ui/theme/** — Color.kt, Theme.kt(darkTheme: Boolean), Type.kt
 
-**ui/screen/dashboard/**
-- DashboardScreen.kt — список колод, StatsCard, BottomNavBar (Колоды/Статистика/Настройки с навигацией), FAB, диалоги удаления/сброса
-- DashboardViewModel.kt — загружает колоды + прогресс, deleteDeck, resetProgress
+**ui/screen/dashboard/** — без изменений
 
-**ui/screen/deck/**
-- DeckScreen.kt — прогресс (known/learning/new), 4 кнопки режимов, меню сброса
-- DeckViewModel.kt — колода по deckId, прогресс, resetProgress
-- AddDeckScreen.kt — поле вставки CSV, кнопка импорта
-- AddDeckViewModel.kt — вызывает ImportDeckUseCase
+**ui/screen/deck/** — без изменений
 
-**ui/screen/study/** ← ВСЕ РЕЖИМЫ ЗДЕСЬ
-- StudyScreen.kt — роутер по mode:
-  - FlashcardContent ✅ — свайп+анимация, переворот, TTS, кнопки Знаю/Повторить
-  - WritingContent ✅ — русский → пишем иврит, stripNikud, побуквенный разбор, Ещё раз
-  - DictationContent ✅ — автовоспроизведение TTS, пишем иврит, тот же разбор
-  - ChoiceContent ✅ — сетка 2×2, правильный зеленеет 600ms, неправильный краснеет 1200ms
-  - SessionCompleteContent ✅ — итоги (правильно/ошибок/время), кнопка назад
-  - LetterByLetterFeedback — общий компонент разбора для написания и диктанта
-  - DiffDisplay — RTL строка с цветными буквами
-- StudyViewModel.kt — SRS-очередь, allCards для ChoiceContent, swipeRight/Left/flip/recordError
+**ui/screen/study/**
+- StudyScreen.kt ✅ — все 4 режима + SessionCompleteContent
+- StudyViewModel.kt ✅ — SRS, allCards, session_size из prefs, swipeRight/Left/flip/recordError
 
 **ui/screen/settings/**
-- SettingsViewModel.kt — SharedPreferences "hebrewcards_prefs", TTS движки, тема
-- SettingsScreen.kt — Switch темы, RadioButton TTS движков, версия приложения
+- SettingsScreen.kt ✅ — 4 карточки:
+  - Отображение: Switch темы
+  - Звук: RadioButton движков + RadioButton скорости (Нормально/Медленно)
+  - Обучение: RadioButton количества слов (10/20/Все)
+  - О приложении: версия
+- параметры: onThemeChange, onEngineChange, onSpeedChange, onSessionSizeChange
 
 **ui/screen/stats/**
-- StatsViewModel.kt — суммирует known/сессии/правильные по всем колодам
-- StatsScreen.kt — 3 плашки + список колод с прогресс-барами, пустое состояние
+- StatsScreen.kt ✅ — 3 плашки + список колод
 
 **ui/navigation/**
-- NavGraph.kt — маршруты: dashboard, add_deck, deck/{deckId}, study/{deckId}/{mode}, settings, stats
+- NavGraph.kt ✅ — параметры: onThemeChange, onEngineChange, onSpeedChange, onSessionSizeChange
 
-**MainActivity.kt** — setContent { HebrewCardsTheme { HebrewCardsNavGraph() } }
+**MainActivity.kt** ✅ — все колбэки подключены
+
+**app/build.gradle.kts** — buildConfig = true
 
 ---
 
-### НЕ РЕАЛИЗОВАНО (Этап 2 — после MVP)
+### НЕ РЕАЛИЗОВАНО (очередь)
 
-1. **Смена темы в рантайме** — SettingsScreen сохраняет выбор, но Theme.kt не читает SharedPreferences
-   - Нужно: передавать isDarkTheme из SettingsViewModel в HebrewCardsTheme через StateFlow в MainActivity
-   - Приоритет: средний (тёмная тема работает по умолчанию)
-
-2. **Демо-колода при первом запуске** — не реализована
-
-3. **SessionCompleteScreen как отдельный экран** — сейчас встроен в StudyScreen
-   - По спецификации: отдельный маршрут session/{deckId} с кнопками "повторить ошибки" и "следующая колода"
-   - Сейчас: упрощённый вариант внутри StudyScreen, достаточно для MVP
-
-4. **Геймификация** — стрики, серии без ошибок (Этап 2)
-
-5. **Экспорт/импорт резервной копии** — Этап 2
-
-6. **Глагольные карточки** — Этап 2
+1. **Демо-колода при первом запуске** — пустой экран для нового пользователя
+2. **Геймификация** — 🔥 и ⚡ на дашборде показывают "—"
+3. **Экспорт/импорт резервной копии**
+4. **Глагольные карточки**
 
 ---
 
 ## Важные технические детали
 
-- **stripNikud** реализована в StudyScreen.kt (private fun), фильтрует символы U+05D0..U+05EA
-- **TtsManager.init()** принимает onReady: () -> Unit — колбэк когда TTS готов
-- **CardProgress.correctStreak** — поле есть в entity (не в оригинальной спецификации)
+- **SharedPreferences файл:** "hebrewcards_prefs"
+  - "is_dark_theme" (Boolean, default true)
+  - "tts_engine" (String, default "")
+  - "tts_speed" (Float, default 1.0f) — медленно=0.7f, нормально=1.0f
+  - "session_size" (Int, default 0) — 0=все, 10=десять, 20=двадцать
+- **stripNikud** — private fun в StudyScreen.kt, фильтрует U+05D0..U+05EA
+- **buildOptions** — private fun в StudyScreen.kt, 3 дистрактора для ChoiceContent
+- **CardProgress.correctStreak** — поле есть в entity
 - **DeckProgress** — data class в DeckRepository: total, known, learning, new, knownFraction
-- **StudyUiState.allCards** — все карточки колоды, нужны ChoiceContent для генерации вариантов
-- **StudyUiState.repeatCount** — счётчик ошибок для экрана результатов
+- **StudyUiState.allCards** — все карточки колоды для ChoiceContent
+- **BuildConfig** — работает только с buildConfig = true в app/build.gradle.kts
