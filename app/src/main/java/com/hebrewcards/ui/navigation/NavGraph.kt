@@ -29,7 +29,7 @@ object Routes {
 }
 
 @Composable
-fun HebrewCardsNavGraph() {
+fun HebrewCardsNavGraph(onThemeChange: (Boolean) -> Unit = {}) {
     val navController = rememberNavController()
 
     NavHost(
@@ -67,7 +67,7 @@ fun HebrewCardsNavGraph() {
         }
 
         composable(Routes.SETTINGS) {
-            SettingsScreen(navController = navController)
+            SettingsScreen(navController = navController, onThemeChange = onThemeChange)
         }
 
         composable(Routes.STATS) {

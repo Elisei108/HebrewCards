@@ -1,5 +1,6 @@
 package com.hebrewcards.ui.screen.settings
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -21,8 +22,16 @@ import com.hebrewcards.util.TtsManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(navController: NavController) {
-    val colors = LocalAppColors.current
+fun SettingsScreen(
+    navController: NavController,
+    onThemeChange: (Boolean) -> Unit = {}
+) {
+    val context = LocalContext.current
+    val colors  = LocalAppColors.current
+
+    // Читаем текущее значение темы из SharedPreferences
+    val prefs       = remember { context.getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE) }
+    var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
 
     Scaffold(
         containerColor = colors.background,
@@ -72,11 +81,13 @@ fun SettingsScreen(navController: NavController) {
                             color    = colors.textPrimary,
                             modifier = Modifier.weight(1f)
                         )
-                        // Switch декоративный — реальное переключение темы в Этапе 2
                         Switch(
-                            checked         = true,
-                            onCheckedChange = {},
-                            colors          = SwitchDefaults.colors(checkedTrackColor = ColorFlashcard)
+                            checked         = isDarkTheme,
+                            onCheckedChange = { isDark ->
+                                isDarkTheme = isDark
+                                onThemeChange(isDark)
+                            },
+                            colors = SwitchDefaults.colors(checkedTrackColor = ColorFlashcard)
                         )
                     }
                 }
