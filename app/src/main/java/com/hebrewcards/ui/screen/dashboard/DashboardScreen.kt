@@ -64,7 +64,11 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                StatsCard(totalWordsLearned = uiState.totalWordsLearned)
+                StatsCard(
+                    totalWordsLearned = uiState.totalWordsLearned,
+                    currentStreak     = uiState.currentStreak,
+                    maxStreak         = uiState.maxStreak
+                )
             }
 
             item {
@@ -96,7 +100,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun StatsCard(totalWordsLearned: Int) {
+private fun StatsCard(totalWordsLearned: Int, currentStreak: Int, maxStreak: Int) {
     val colors = LocalAppColors.current
     Row(
         modifier = Modifier
@@ -108,9 +112,9 @@ private fun StatsCard(totalWordsLearned: Int) {
     ) {
         StatItem("📚", totalWordsLearned.toString(), "слов изучено")
         StatDivider(colors)
-        StatItem("🔥", "—", "дней подряд")
+        StatItem("🔥", currentStreak.toString(), "дней подряд")
         StatDivider(colors)
-        StatItem("⚡", "—", "серия")
+        StatItem("⚡", maxStreak.toString(), "рекорд серии")
     }
 }
 

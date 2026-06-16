@@ -2,6 +2,7 @@ package com.hebrewcards.ui.screen.study
 
 import android.app.Application
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hebrewcards.data.db.AppDatabase
@@ -11,6 +12,7 @@ import com.hebrewcards.data.repository.ProgressRepository
 import com.hebrewcards.domain.model.StudyMode
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 private const val KNOWN_THRESHOLD = 3   // правильных подряд → KNOWN
 private const val KNOWN_INTERVAL  = 10  // каждые N карточек вставляем одну KNOWN
@@ -29,7 +31,9 @@ data class StudyUiState(
     val isFlipped: Boolean = false,
     val isLoading: Boolean = true,
     val isComplete: Boolean = false,
-    val startTime: Long = 0L
+    val startTime: Long = 0L,
+    val currentStreak: Int = 0,    // текущая серия без ошибок в этой сессии
+    val maxStreak: Int = 0         // рекорд серии в этой сессии
 ) {
     val current: StudyCard? get() = remaining.firstOrNull()
     val progressFraction: Float
@@ -115,7 +119,7 @@ class StudyViewModel(
         _uiState.update { it.copy(isFlipped = !it.isFlipped) }
     }
 
-    // Свайп вправо — знаю: обновляем прогресс, переходим к следующей
+    // Свайп вправо — знаю: обновляем прогресс, серию, переходим к следующей
     fun swipeRight() {
         val state   = _uiState.value
         val current = state.current ?: return
@@ -124,22 +128,26 @@ class StudyViewModel(
             val updated = advanceProgress(current.progress)
             progressRepo.upsertProgress(updated)
 
-            val newRemaining = state.remaining.drop(1)
-            val isComplete   = newRemaining.isEmpty()
+            val newRemaining  = state.remaining.drop(1)
+            val isComplete    = newRemaining.isEmpty()
+            val newStreak     = state.currentStreak + 1
+            val newMaxStreak  = maxOf(state.maxStreak, newStreak)
 
             _uiState.update {
                 it.copy(
-                    remaining  = newRemaining,
-                    answered   = it.answered + 1,
-                    isFlipped  = false,
-                    isComplete = isComplete
+                    remaining     = newRemaining,
+                    answered      = it.answered + 1,
+                    isFlipped     = false,
+                    isComplete    = isComplete,
+                    currentStreak = newStreak,
+                    maxStreak     = newMaxStreak
                 )
             }
             if (isComplete) saveSession()
         }
     }
 
-    // Режим написания — фиксируем ошибку (не переходим к следующей карточке)
+    // Режим написания — фиксируем ошибку, серия сбрасывается
     fun recordError() {
         val state   = _uiState.value
         val current = state.current ?: return
@@ -155,14 +163,15 @@ class StudyViewModel(
             val newRemaining = listOf(current.copy(progress = updated)) + state.remaining.drop(1)
             _uiState.update {
                 it.copy(
-                    remaining   = newRemaining,
-                    repeatCount = it.repeatCount + 1
+                    remaining     = newRemaining,
+                    repeatCount   = it.repeatCount + 1,
+                    currentStreak = 0
                 )
             }
         }
     }
 
-    // Свайп влево — повторить: карточка уходит в конец очереди, прогресс не меняется
+    // Свайп влево — повторить: карточка в конец очереди, серия сбрасывается
     fun swipeLeft() {
         val state   = _uiState.value
         val current = state.current ?: return
@@ -171,9 +180,10 @@ class StudyViewModel(
 
         _uiState.update {
             it.copy(
-                remaining   = newRemaining,
-                repeatCount = it.repeatCount + 1,
-                isFlipped   = false
+                remaining     = newRemaining,
+                repeatCount   = it.repeatCount + 1,
+                isFlipped     = false,
+                currentStreak = 0
             )
         }
     }
@@ -216,6 +226,29 @@ class StudyViewModel(
             deckRepo.getDeckById(deckId)?.let { deck ->
                 deckRepo.updateDeck(deck.copy(lastStudiedAt = System.currentTimeMillis()))
             }
+            // Обновляем дневной стрик после завершения сессии
+            val prefs = getApplication<Application>()
+                .getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE)
+            updateStreak(prefs)
         }
+    }
+
+    // Пересчитывает стрик дней подряд на основе даты последней сессии
+    private fun updateStreak(prefs: SharedPreferences) {
+        val today   = LocalDate.now().toString()
+        val last    = prefs.getString("streak_last_date", "") ?: ""
+        val current = prefs.getInt("streak_current", 0)
+
+        val newStreak = when {
+            last == today                                       -> current  // уже занимался сегодня
+            last == LocalDate.now().minusDays(1).toString()    -> current + 1  // занимался вчера
+            else                                               -> 1         // пропустил день(и)
+        }
+        val newMax = maxOf(prefs.getInt("streak_max", 0), newStreak)
+        prefs.edit()
+            .putString("streak_last_date", today)
+            .putInt("streak_current", newStreak)
+            .putInt("streak_max", newMax)
+            .apply()
     }
 }

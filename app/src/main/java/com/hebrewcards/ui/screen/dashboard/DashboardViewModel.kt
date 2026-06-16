@@ -24,6 +24,8 @@ data class DeckUiItem(
 data class DashboardUiState(
     val decks: List<DeckUiItem> = emptyList(),
     val totalWordsLearned: Int = 0,
+    val currentStreak: Int = 0,  // дней занятий подряд
+    val maxStreak: Int = 0,      // рекорд серии без ошибок за всё время
     val isLoading: Boolean = true
 )
 
@@ -69,6 +71,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private fun loadDashboard() {
         viewModelScope.launch {
+            val prefs = getApplication<Application>()
+                .getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE)
+
             deckRepo.getAllDecks().collect { decks ->
                 // Для каждой колоды загружаем прогресс
                 val deckItems = decks.map { deck ->
@@ -83,6 +88,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     it.copy(
                         decks             = deckItems,
                         totalWordsLearned = totalLearned,
+                        // Читаем стрик свежим при каждом обновлении (после сессии прилетит новое значение)
+                        currentStreak     = prefs.getInt("streak_current", 0),
+                        maxStreak         = prefs.getInt("streak_max", 0),
                         isLoading         = false
                     )
                 }
