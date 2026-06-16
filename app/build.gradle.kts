@@ -39,6 +39,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true   // нужно для BuildConfig.VERSION_NAME в SettingsScreen
     }
 
     androidResources {

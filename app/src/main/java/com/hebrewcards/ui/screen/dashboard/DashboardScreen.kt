@@ -266,7 +266,7 @@ private fun BottomNavBar(navController: NavController) {
         )
         NavigationBarItem(
             selected = false,
-            onClick  = {},
+            onClick  = { navController.navigate(Routes.STATS) },
             icon     = { Icon(Icons.Default.BarChart, null) },
             label    = { Text("Статистика") },
             colors   = NavigationBarItemDefaults.colors(
@@ -279,7 +279,7 @@ private fun BottomNavBar(navController: NavController) {
         )
         NavigationBarItem(
             selected = false,
-            onClick  = {},
+            onClick  = { navController.navigate(Routes.SETTINGS) },
             icon     = { Icon(Icons.Default.Settings, null) },
             label    = { Text("Настройки") },
             colors   = NavigationBarItemDefaults.colors(

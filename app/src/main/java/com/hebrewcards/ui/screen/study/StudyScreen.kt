@@ -185,7 +185,20 @@ fun StudyScreen(
                             onSpeak       = { tts.speak(state.current!!.card.hebrew) }
                         )
                     }
-                    else -> FlashcardContent(
+                    StudyMode.CHOICE -> key(state.current!!.card.id) {
+                        ChoiceContent(
+                            studyCard    = state.current!!,
+                            answered     = state.answered,
+                            initialTotal = state.initialTotal,
+                            allCards     = state.allCards,
+                            padding      = padding,
+                            onCorrect    = vm::swipeRight,
+                            onWrong      = { vm.swipeLeft(); vm.recordError() },
+                            onSpeak      = { tts.speak(state.current!!.card.hebrew) },
+                            onBack       = { navController.popBackStack() }
+                        )
+                    }
+                    StudyMode.FLASHCARD -> FlashcardContent(
                         state        = state,
                         padding      = padding,
                         onFlip       = vm::flip,
@@ -625,6 +638,162 @@ private fun DiffDisplay(diff: List<DiffChar>) {
                     ),
                     modifier = Modifier.padding(horizontal = 2.dp)
                 )
+            }
+        }
+    }
+}
+
+// ─── Режим выбора из 4 ───────────────────────────────────────────────────────
+
+// Генерирует 4 варианта: 1 правильный + 3 случайных из колоды; если не хватает — дублируем
+private fun buildOptions(card: Card, all: List<Card>): List<String> {
+    val correct     = card.russian
+    val distractors = all
+        .filter { it.id != card.id }
+        .map { it.russian }
+        .distinct()
+        .filter { it != correct }
+        .shuffled()
+
+    val result = mutableListOf(correct)
+    var suffix = 2
+    var idx    = 0
+    while (result.size < 4) {
+        val next = distractors.getOrNull(idx++)
+        if (next != null) result.add(next)
+        else { result.add("$correct ($suffix)"); suffix++ }
+    }
+    return result.shuffled()
+}
+
+@Composable
+private fun ChoiceContent(
+    studyCard: StudyCard,
+    answered: Int,
+    initialTotal: Int,
+    allCards: List<Card>,
+    padding: PaddingValues,
+    onCorrect: () -> Unit,
+    onWrong: () -> Unit,
+    onSpeak: () -> Unit,
+    onBack: () -> Unit
+) {
+    val card   = studyCard.card
+    val colors = LocalAppColors.current
+    val scope  = rememberCoroutineScope()
+
+    // Пустая колода — защита от крайнего случая
+    if (allCards.isEmpty()) {
+        Column(
+            modifier            = Modifier.fillMaxSize().padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Нет новых слов для изучения", fontSize = 18.sp, color = colors.textSecondary)
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onBack,
+                colors  = ButtonDefaults.buttonColors(containerColor = ColorChoice)
+            ) {
+                Text("← Назад", color = Color.White)
+            }
+        }
+        return
+    }
+
+    var options  by remember { mutableStateOf(listOf<String>()) }
+    var selected by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(card.id) { options = buildOptions(card, allCards) }
+
+    Column(
+        modifier            = Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("${answered + 1} / $initialTotal", fontSize = 13.sp, color = colors.textSecondary)
+
+        Spacer(Modifier.height(32.dp))
+
+        // Ивритское слово крупным шрифтом
+        Text(
+            text      = card.hebrew,
+            style     = HebrewTextStyle.cardWord(46f),
+            color     = colors.textPrimary,
+            textAlign = TextAlign.Center,
+            modifier  = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // Кнопка TTS
+        IconButton(onClick = onSpeak) {
+            @Suppress("DEPRECATION")
+            Icon(Icons.Default.VolumeUp, "Произнести", tint = colors.textSecondary)
+        }
+
+        Spacer(Modifier.height(32.dp))
+
+        // Сетка 2×2
+        if (options.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                options.chunked(2).forEach { row ->
+                    Row(
+                        modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        row.forEach { option ->
+                            val isCorrect  = option == card.russian
+                            val isSelected = option == selected
+
+                            val bgColor     = when {
+                                selected == null -> colors.surface
+                                isCorrect        -> ColorFlashcard.copy(alpha = 0.15f)
+                                isSelected       -> ColorWrongLetter.copy(alpha = 0.15f)
+                                else             -> colors.surface
+                            }
+                            val borderColor = when {
+                                selected == null -> colors.border
+                                isCorrect        -> ColorFlashcard
+                                isSelected       -> ColorWrongLetter
+                                else             -> colors.border
+                            }
+                            val textColor   = when {
+                                selected == null -> colors.textPrimary
+                                isCorrect        -> ColorFlashcard
+                                isSelected       -> ColorWrongLetter
+                                else             -> colors.textSecondary
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    if (selected != null) return@OutlinedButton
+                                    selected = option
+                                    scope.launch {
+                                        if (isCorrect) { delay(600); onCorrect() }
+                                        else           { delay(1200); onWrong() }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(72.dp),
+                                shape    = RoundedCornerShape(14.dp),
+                                colors   = ButtonDefaults.outlinedButtonColors(
+                                    containerColor         = bgColor,
+                                    disabledContainerColor = bgColor
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+                            ) {
+                                Text(
+                                    text      = option,
+                                    color     = textColor,
+                                    textAlign = TextAlign.Center,
+                                    fontSize  = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

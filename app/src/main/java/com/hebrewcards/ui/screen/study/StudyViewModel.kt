@@ -21,6 +21,7 @@ data class StudyCard(
 
 data class StudyUiState(
     val remaining: List<StudyCard> = emptyList(),
+    val allCards: List<Card> = emptyList(),   // все карточки колоды — нужны ChoiceContent для вариантов
     val initialTotal: Int = 0,
     val answered: Int = 0,         // свайпов вправо (знаю)
     val repeatCount: Int = 0,      // свайпов влево (повторить)
@@ -73,6 +74,7 @@ class StudyViewModel(
             _uiState.update {
                 it.copy(
                     remaining    = queue,
+                    allCards     = cards,
                     initialTotal = queue.size,
                     isLoading    = false,
                     startTime    = System.currentTimeMillis()

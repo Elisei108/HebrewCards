@@ -10,6 +10,8 @@ import com.hebrewcards.domain.model.StudyMode
 import com.hebrewcards.ui.screen.dashboard.DashboardScreen
 import com.hebrewcards.ui.screen.deck.AddDeckScreen
 import com.hebrewcards.ui.screen.deck.DeckScreen
+import com.hebrewcards.ui.screen.settings.SettingsScreen
+import com.hebrewcards.ui.screen.stats.StatsScreen
 import com.hebrewcards.ui.screen.study.StudyScreen
 
 object Routes {
@@ -64,6 +66,12 @@ fun HebrewCardsNavGraph() {
             StudyScreen(deckId = deckId, mode = mode, navController = navController)
         }
 
-        // Остальные экраны добавляются по мере реализации
+        composable(Routes.SETTINGS) {
+            SettingsScreen(navController = navController)
+        }
+
+        composable(Routes.STATS) {
+            StatsScreen(navController = navController)
+        }
     }
 }
