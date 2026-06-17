@@ -30,6 +30,11 @@ class MainActivity : ComponentActivity() {
             // TTS-менеджер уровня Activity для смены движка без перезапуска
             val ttsManager = remember { TtsManager(applicationContext) }
 
+            // Закрываем TTS при пересоздании Activity (поворот, смена темы и т.д.)
+            DisposableEffect(Unit) {
+                onDispose { ttsManager.shutdown() }
+            }
+
             HebrewCardsTheme(darkTheme = isDarkTheme) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     HebrewCardsNavGraph(
@@ -37,9 +42,18 @@ class MainActivity : ComponentActivity() {
                             isDarkTheme = isDark
                             prefs.edit().putBoolean(KEY_DARK_THEME, isDark).apply()
                         },
-                        onEngineChange      = { pkg  -> ttsManager.reinit(pkg) },
-                        onSpeedChange       = { rate -> ttsManager.setSpeed(rate) },
-                        onSessionSizeChange = {}
+                        // Все записи настроек централизованы здесь — SettingsScreen только зовёт колбэки
+                        onEngineChange      = { pkg  ->
+                            prefs.edit().putString("tts_engine", pkg).apply()
+                            ttsManager.reinit(pkg)
+                        },
+                        onSpeedChange       = { rate ->
+                            prefs.edit().putFloat("tts_speed", rate).apply()
+                            ttsManager.setSpeed(rate)
+                        },
+                        onSessionSizeChange = { size ->
+                            prefs.edit().putInt("session_size", size).apply()
+                        }
                     )
                 }
             }

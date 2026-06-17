@@ -127,13 +127,11 @@ fun SettingsScreen(
                 selectedEngine = selectedEngine,
                 onEngineChange = { pkg ->
                     selectedEngine = pkg
-                    prefs.edit().putString("tts_engine", pkg).apply()
                     onEngineChange(pkg)
                 },
                 selectedSpeed  = selectedSpeed,
                 onSpeedChange  = { rate ->
                     selectedSpeed = rate
-                    prefs.edit().putFloat("tts_speed", rate).apply()
                     onSpeedChange(rate)
                 }
             )
@@ -168,7 +166,6 @@ fun SettingsScreen(
                                 selected = selectedSessionSize == size,
                                 onClick  = {
                                     selectedSessionSize = size
-                                    prefs.edit().putInt("session_size", size).apply()
                                     onSessionSizeChange(size)
                                 },
                                 colors = RadioButtonDefaults.colors(selectedColor = ColorFlashcard)
