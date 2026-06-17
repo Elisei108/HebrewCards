@@ -153,8 +153,11 @@ class StudyViewModel(
         val current = state.current ?: return
 
         viewModelScope.launch {
+            // При ошибке сбрасываем correctStreak и возвращаем KNOWN → LEARNING
             val updated = current.progress.copy(
                 errorCount    = current.progress.errorCount + 1,
+                correctStreak = 0,
+                status        = if (current.progress.status == CardStatus.KNOWN) CardStatus.LEARNING else current.progress.status,
                 lastStudiedAt = System.currentTimeMillis()
             )
             progressRepo.upsertProgress(updated)
@@ -218,7 +221,7 @@ class StudyViewModel(
                     mode            = mode,
                     totalCards      = state.initialTotal,
                     correctCount    = state.answered,
-                    errorCount      = 0,
+                    errorCount      = state.repeatCount,
                     durationSeconds = duration,
                     completedAt     = System.currentTimeMillis()
                 )

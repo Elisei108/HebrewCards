@@ -193,7 +193,7 @@ fun StudyScreen(
                             allCards     = state.allCards,
                             padding      = padding,
                             onCorrect    = vm::swipeRight,
-                            onWrong      = { vm.swipeLeft(); vm.recordError() },
+                            onWrong      = { vm.swipeLeft() },
                             onSpeak      = { tts.speak(state.current!!.card.hebrew) },
                             onBack       = { navController.popBackStack() }
                         )
