@@ -651,7 +651,13 @@ private fun DiffDisplay(diff: List<DiffChar>) {
 
 // ─── Режим выбора из 4 ───────────────────────────────────────────────────────
 
-// Генерирует 4 варианта: 1 правильный + 3 случайных из колоды; если не хватает — дублируем
+// Запасные варианты для колод с < 4 уникальными переводами
+private val GENERIC_DISTRACTORS = listOf(
+    "книга", "стол", "окно", "ручка", "стул", "дверь",
+    "машина", "телефон", "сумка", "часы"
+)
+
+// Генерирует 4 варианта: 1 правильный + 3 дистрактора из колоды или из запасного списка
 private fun buildOptions(card: Card, all: List<Card>): List<String> {
     val correct     = card.russian
     val distractors = all
@@ -660,14 +666,18 @@ private fun buildOptions(card: Card, all: List<Card>): List<String> {
         .distinct()
         .filter { it != correct }
         .shuffled()
+        .toMutableList()
+
+    // Дополняем из запасного списка если дистракторов не хватает
+    if (distractors.size < 3) {
+        val fallback = GENERIC_DISTRACTORS.filter { it != correct && it !in distractors }.shuffled()
+        distractors += fallback
+    }
 
     val result = mutableListOf(correct)
-    var suffix = 2
     var idx    = 0
     while (result.size < 4) {
-        val next = distractors.getOrNull(idx++)
-        if (next != null) result.add(next)
-        else { result.add("$correct ($suffix)"); suffix++ }
+        result.add(distractors[idx++])
     }
     return result.shuffled()
 }
@@ -1061,7 +1071,8 @@ private fun SessionCompleteContent(
     padding: PaddingValues
 ) {
     val colors   = LocalAppColors.current
-    val duration = ((System.currentTimeMillis() - state.startTime) / 1000).toInt()
+    // Используем зафиксированную длительность — не пересчитываем при рекомпозе
+    val duration = state.finalDurationSeconds
     val minutes  = duration / 60
     val seconds  = duration % 60
 

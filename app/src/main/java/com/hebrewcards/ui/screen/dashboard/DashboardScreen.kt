@@ -114,7 +114,7 @@ private fun StatsCard(totalWordsLearned: Int, currentStreak: Int, maxStreak: Int
         StatDivider(colors)
         StatItem("🔥", currentStreak.toString(), "дней подряд")
         StatDivider(colors)
-        StatItem("⚡", maxStreak.toString(), "рекорд серии")
+        StatItem("⚡", maxStreak.toString(), "макс. дней")
     }
 }
 

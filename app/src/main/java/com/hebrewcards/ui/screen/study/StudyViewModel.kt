@@ -33,7 +33,8 @@ data class StudyUiState(
     val isComplete: Boolean = false,
     val startTime: Long = 0L,
     val currentStreak: Int = 0,    // текущая серия без ошибок в этой сессии
-    val maxStreak: Int = 0         // рекорд серии в этой сессии
+    val maxStreak: Int = 0,        // рекорд серии в этой сессии
+    val finalDurationSeconds: Int = 0  // зафиксированная длительность, не тикает после завершения
 ) {
     val current: StudyCard? get() = remaining.firstOrNull()
     val progressFraction: Float
@@ -215,6 +216,8 @@ class StudyViewModel(
         viewModelScope.launch {
             val state    = _uiState.value
             val duration = ((System.currentTimeMillis() - state.startTime) / 1000).toInt()
+            // Фиксируем длительность в state — SessionCompleteContent читает её, не пересчитывает
+            _uiState.update { it.copy(finalDurationSeconds = duration) }
             progressRepo.insertSessionResult(
                 SessionResult(
                     deckId          = deckId,
