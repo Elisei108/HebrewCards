@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -234,7 +235,7 @@ private fun DictationContent(
     val colors   = LocalAppColors.current
     val keyboard = LocalSoftwareKeyboardController.current
 
-    var inputText   by remember { mutableStateOf("") }
+    var inputText   by rememberSaveable { mutableStateOf("") }
     var checkResult by remember { mutableStateOf<CheckResult?>(null) }
 
     val focusRequester = remember { FocusRequester() }
@@ -404,9 +405,9 @@ private fun WritingContent(
     val colors  = LocalAppColors.current
     val keyboard = LocalSoftwareKeyboardController.current
 
-    var inputText    by remember { mutableStateOf("") }
+    var inputText    by rememberSaveable { mutableStateOf("") }
     var checkResult  by remember { mutableStateOf<CheckResult?>(null) }
-    var showTranslit by remember { mutableStateOf(false) }
+    var showTranslit by rememberSaveable { mutableStateOf(false) }
 
     val focusRequester = remember { FocusRequester() }
 
