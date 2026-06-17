@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import android.content.Context
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -110,7 +111,11 @@ fun StudyScreen(
     var ttsReady by remember { mutableStateOf(false) }
     val tts = remember { TtsManager(application) }
     DisposableEffect(Unit) {
-        tts.init(onReady = { ttsReady = true })
+        // Читаем настройки движка и скорости из SharedPreferences
+        val prefs = application.getSharedPreferences("hebrewcards_prefs", Context.MODE_PRIVATE)
+        val enginePackage = prefs.getString("tts_engine", "").orEmpty().takeIf { it.isNotBlank() }
+        val speed = prefs.getFloat("tts_speed", 1.0f)
+        tts.init(enginePackage = enginePackage, onReady = { tts.setSpeed(speed); ttsReady = true })
         onDispose { tts.shutdown() }
     }
 
