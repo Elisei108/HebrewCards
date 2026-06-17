@@ -41,7 +41,7 @@ data class AddDeckUiState(
 class AddDeckViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db      = AppDatabase.getInstance(application)
-    private val repo    = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao())
+    private val repo    = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao(), db)
     private val useCase = ImportDeckUseCase(repo)
 
     private val _uiState = MutableStateFlow(AddDeckUiState())

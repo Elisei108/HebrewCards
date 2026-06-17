@@ -34,7 +34,7 @@ data class DashboardUiState(
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getInstance(application)
-    private val deckRepo = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao())
+    private val deckRepo = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao(), db)
     private val progressRepo = ProgressRepository(db.progressDao())
     private val importUseCase = ImportDeckUseCase(deckRepo)
 

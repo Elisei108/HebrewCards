@@ -1,5 +1,7 @@
 package com.hebrewcards.data.repository
 
+import androidx.room.withTransaction
+import com.hebrewcards.data.db.AppDatabase
 import com.hebrewcards.data.db.dao.CardDao
 import com.hebrewcards.data.db.dao.DeckDao
 import com.hebrewcards.data.db.dao.ProgressDao
@@ -13,7 +15,8 @@ import kotlinx.coroutines.flow.Flow
 class DeckRepository(
     private val deckDao: DeckDao,
     private val cardDao: CardDao,
-    private val progressDao: ProgressDao
+    private val progressDao: ProgressDao,
+    private val db: AppDatabase? = null  // нужен для withTransaction
 ) {
     fun getAllDecks(): Flow<List<Deck>> = deckDao.getAllDecks()
 
@@ -41,52 +44,51 @@ class DeckRepository(
         return DeckProgress(total, known, learning, new)
     }
 
-    // Вставить обычные карточки + создать начальный прогресс (все NEW)
+    // Вставить обычные карточки + создать начальный прогресс атомарно
     suspend fun insertCardsWithProgress(deckId: Long, cards: List<Card>) {
-        cardDao.insertCards(cards)
-        // Получаем карточки с реальными id (после autoGenerate)
-        val inserted = cardDao.getCardsByDeckOnce(deckId)
-        val progressList = inserted.map { card ->
-            CardProgress(
-                cardId        = card.id,
-                deckId        = deckId,
-                status        = CardStatus.NEW,
-                errorCount    = 0,
-                correctStreak = 0,
-                lastStudiedAt = null
-            )
+        val doInsert = suspend {
+            val ids = cardDao.insertCards(cards)
+            val progressList = ids.map { id ->
+                CardProgress(
+                    cardId        = id,
+                    deckId        = deckId,
+                    status        = CardStatus.NEW,
+                    errorCount    = 0,
+                    correctStreak = 0,
+                    lastStudiedAt = null
+                )
+            }
+            progressDao.insertProgressList(progressList)
         }
-        progressDao.insertProgressList(progressList)
+        if (db != null) db.withTransaction { doInsert() } else doInsert()
     }
 
-    // Вставить глагольные карточки + VerbCard + прогресс
+    // Вставить глагольные карточки + VerbCard + прогресс атомарно
     suspend fun insertVerbCardsWithProgress(
         deckId: Long,
         cards: List<Card>,
         verbCards: List<VerbCard>
     ) {
-        cardDao.insertCards(cards)
-        // Получаем карточки с реальными id
-        val inserted = cardDao.getCardsByDeckOnce(deckId)
-
-        // Привязываем VerbCard к реальным cardId по позиции
-        val verbCardsWithIds = inserted.mapIndexed { index, card ->
-            verbCards[index].copy(cardId = card.id)
+        val doInsert = suspend {
+            val ids = cardDao.insertCards(cards)
+            // Привязываем VerbCard к реальным id по индексу вставки
+            val verbCardsWithIds = ids.mapIndexed { index, id ->
+                verbCards[index].copy(cardId = id)
+            }
+            cardDao.insertVerbCards(verbCardsWithIds)
+            val progressList = ids.map { id ->
+                CardProgress(
+                    cardId        = id,
+                    deckId        = deckId,
+                    status        = CardStatus.NEW,
+                    errorCount    = 0,
+                    correctStreak = 0,
+                    lastStudiedAt = null
+                )
+            }
+            progressDao.insertProgressList(progressList)
         }
-        cardDao.insertVerbCards(verbCardsWithIds)
-
-        // Прогресс
-        val progressList = inserted.map { card ->
-            CardProgress(
-                cardId        = card.id,
-                deckId        = deckId,
-                status        = CardStatus.NEW,
-                errorCount    = 0,
-                correctStreak = 0,
-                lastStudiedAt = null
-            )
-        }
-        progressDao.insertProgressList(progressList)
+        if (db != null) db.withTransaction { doInsert() } else doInsert()
     }
 
     // Сбросить прогресс — все карточки снова NEW

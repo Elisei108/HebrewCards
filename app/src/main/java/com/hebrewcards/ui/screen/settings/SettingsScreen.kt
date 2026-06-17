@@ -46,7 +46,7 @@ fun SettingsScreen(
     val db              = remember { AppDatabase.getInstance(context) }
     val exportUseCase   = remember {
         ExportDeckUseCase(
-            DeckRepository(db.deckDao(), db.cardDao(), db.progressDao()),
+            DeckRepository(db.deckDao(), db.cardDao(), db.progressDao(), db),
             db
         )
     }

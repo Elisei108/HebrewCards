@@ -24,7 +24,7 @@ interface CardDao {
     suspend fun insertCard(card: Card): Long
 
     @Insert
-    suspend fun insertCards(cards: List<Card>)
+    suspend fun insertCards(cards: List<Card>): List<Long>
 
     @Update
     suspend fun updateCard(card: Card)

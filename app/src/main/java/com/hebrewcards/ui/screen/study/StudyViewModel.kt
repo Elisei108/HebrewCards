@@ -48,7 +48,7 @@ class StudyViewModel(
 ) : AndroidViewModel(application) {
 
     private val db           = AppDatabase.getInstance(application)
-    private val deckRepo     = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao())
+    private val deckRepo     = DeckRepository(db.deckDao(), db.cardDao(), db.progressDao(), db)
     private val progressRepo = ProgressRepository(db.progressDao())
 
     private val _uiState = MutableStateFlow(StudyUiState())
