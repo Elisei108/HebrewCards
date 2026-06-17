@@ -9,6 +9,8 @@ import com.hebrewcards.data.db.AppDatabase
 import com.hebrewcards.data.repository.DeckRepository
 import com.hebrewcards.domain.model.DeckType
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 sealed class ExportResult {
     data class Success(val fileCount: Int, val folderPath: String) : ExportResult()
@@ -20,10 +22,10 @@ class ExportDeckUseCase(
     private val db: AppDatabase
 ) {
 
-    suspend fun exportAll(context: Context): ExportResult {
-        return try {
+    suspend fun exportAll(context: Context): ExportResult = withContext(Dispatchers.IO) {
+        try {
             val decks = repo.getAllDecksOnce()
-            if (decks.isEmpty()) return ExportResult.Error("Нет колод для экспорта")
+            if (decks.isEmpty()) return@withContext ExportResult.Error("Нет колод для экспорта")
 
             var exported = 0
 
@@ -87,3 +89,4 @@ class ExportDeckUseCase(
         }
     }
 }
+

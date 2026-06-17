@@ -48,18 +48,12 @@ fun AddDeckScreen(
         uiState.importedDeckId?.let { navController.popBackStack() }
     }
 
-    // Лаунчер системного файлового пикера
+    // Лаунчер системного файлового пикера — чтение файла делегируется в ViewModel на IO-потоке
     val filePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri ->
-                // Читаем содержимое файла
-                val fileName    = uri.lastPathSegment?.substringAfterLast("/") ?: "колода"
-                val fileContent = context.contentResolver.openInputStream(uri)
-                    ?.bufferedReader()?.readText() ?: return@let
-                vm.importFromFile(fileName, fileContent)
-            }
+            result.data?.data?.let { uri -> vm.importFromUri(context, uri) }
         }
     }
 

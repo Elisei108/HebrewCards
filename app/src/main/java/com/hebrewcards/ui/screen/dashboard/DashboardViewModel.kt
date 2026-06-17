@@ -11,8 +11,10 @@ import com.hebrewcards.data.repository.DeckRepository
 import com.hebrewcards.data.repository.ProgressRepository
 import com.hebrewcards.domain.model.DeckType
 import com.hebrewcards.domain.usecase.ImportDeckUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Состояние одной колоды на дашборде
 data class DeckUiItem(
@@ -59,10 +61,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     // Читаем CSV из assets и импортируем как демо-колоду
     private suspend fun loadDemoDeck() {
         try {
-            val csvText = getApplication<Application>().assets
-                .open("decks/ulpan_alef_01.csv")
-                .bufferedReader()
-                .readText()
+            val csvText = withContext(Dispatchers.IO) {
+                getApplication<Application>().assets
+                    .open("decks/ulpan_alef_01.csv")
+                    .bufferedReader()
+                    .readText()
+            }
             importUseCase.execute("Ульпан алеф · урок 1", csvText)
         } catch (_: Exception) {
             // Не критично — запуск продолжится без демо-колоды

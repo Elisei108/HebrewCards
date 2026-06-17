@@ -1,17 +1,21 @@
 package com.hebrewcards.ui.screen.deck
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.hebrewcards.data.db.AppDatabase
 import com.hebrewcards.data.repository.DeckRepository
 import com.hebrewcards.domain.usecase.ImportDeckUseCase
 import com.hebrewcards.domain.usecase.ImportResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Одна пара для ручного добавления
 data class ManualCardPair(
@@ -79,6 +83,47 @@ class AddDeckViewModel(application: Application) : AndroidViewModel(application)
                     _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
             }
         }
+    }
+
+    // Импорт из Uri — читаем файл на Dispatchers.IO, затем вызываем importFromFile
+    fun importFromUri(context: Context, uri: Uri) {
+        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                val (fileName, fileContent) = withContext(Dispatchers.IO) {
+                    val displayName = getDisplayName(context, uri)
+                    val content = context.contentResolver.openInputStream(uri)
+                        ?.bufferedReader()?.readText() ?: ""
+                    displayName to content
+                }
+                if (fileContent.isBlank()) {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Файл пустой или не читается") }
+                    return@launch
+                }
+                val deckName = fileName.removeSuffix(".csv").replace("_", " ").trim()
+                when (val result = useCase.execute(deckName, fileContent)) {
+                    is ImportResult.Success ->
+                        _uiState.update { it.copy(isLoading = false, importedDeckId = result.deckId) }
+                    is ImportResult.Error ->
+                        _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Ошибка чтения файла: ${e.message}") }
+            }
+        }
+    }
+
+    // Получаем отображаемое имя файла через ContentResolver (SAF)
+    private fun getDisplayName(context: Context, uri: Uri): String {
+        context.contentResolver.query(
+            uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0) return cursor.getString(idx) ?: "колода"
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast("/") ?: "колода"
     }
 
     fun clearError() {

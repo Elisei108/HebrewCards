@@ -8,6 +8,8 @@ import com.hebrewcards.data.db.entity.VerbCard
 import com.hebrewcards.data.repository.DeckRepository
 import com.hebrewcards.domain.model.DeckType
 import com.hebrewcards.util.Transliterator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // Результат импорта
 sealed class ImportResult {
@@ -22,14 +24,14 @@ class ImportDeckUseCase(private val repo: DeckRepository) {
      * Формат обычной карточки: иврит;перевод
      * Формат глагольной колоды: первая строка #VERB, потом инфинитив;перевод;биньян;корень;настоящее
      */
-    suspend fun execute(deckName: String, csvText: String): ImportResult {
-        if (deckName.isBlank()) return ImportResult.Error("Введите название колоды")
+    suspend fun execute(deckName: String, csvText: String): ImportResult = withContext(Dispatchers.IO) {
+        if (deckName.isBlank()) return@withContext ImportResult.Error("Введите название колоды")
 
         val lines = csvText.lines()
             .map { it.trim() }
             .filter { it.isNotBlank() }
 
-        if (lines.isEmpty()) return ImportResult.Error("Колода пустая — добавьте карточки")
+        if (lines.isEmpty()) return@withContext ImportResult.Error("Колода пустая — добавьте карточки")
 
         // Определяем тип колоды по маркеру #VERB в первой строке
         val isVerb = lines.firstOrNull()?.uppercase() == "#VERB"
@@ -38,9 +40,9 @@ class ImportDeckUseCase(private val repo: DeckRepository) {
         // Фильтруем комментарии (строки начинающиеся с #)
         val cardLines = dataLines.filter { !it.startsWith("#") }
 
-        if (cardLines.isEmpty()) return ImportResult.Error("Нет карточек для импорта")
+        if (cardLines.isEmpty()) return@withContext ImportResult.Error("Нет карточек для импорта")
 
-        return try {
+        try {
             if (isVerb) importVerbDeck(deckName, cardLines)
             else importRegularDeck(deckName, cardLines)
         } catch (e: Exception) {
