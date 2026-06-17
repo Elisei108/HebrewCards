@@ -100,6 +100,10 @@ class AddDeckViewModel(application: Application) : AndroidViewModel(application)
                     _uiState.update { it.copy(isLoading = false, errorMessage = "Файл пустой или не читается") }
                     return@launch
                 }
+                if (!looksLikeCsv(fileContent)) {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Файл не похож на CSV — выберите текстовый файл с данными") }
+                    return@launch
+                }
                 val deckName = fileName.removeSuffix(".csv").replace("_", " ").trim()
                 when (val result = useCase.execute(deckName, fileContent)) {
                     is ImportResult.Success ->
@@ -111,6 +115,13 @@ class AddDeckViewModel(application: Application) : AndroidViewModel(application)
                 _uiState.update { it.copy(isLoading = false, errorMessage = "Ошибка чтения файла: ${e.message}") }
             }
         }
+    }
+
+    // Проверяем что файл хотя бы отдалённо похож на текстовый CSV
+    private fun looksLikeCsv(text: String): Boolean {
+        val sample = text.take(1000)
+        val badChars = sample.count { it.code < 0x20 && it != '\n' && it != '\r' && it != '\t' }
+        return badChars < sample.length / 20
     }
 
     // Получаем отображаемое имя файла через ContentResolver (SAF)
