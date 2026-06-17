@@ -85,6 +85,33 @@
 **Решение:** SharedPreferences ключ "session_size" (Int, default 0 = все); StudyViewModel читает при loadQueue() и обрезает очередь через queue.take(sessionSize)
 **Значения:** 0 = все, 10 = десять, 20 = двадцать
 
+### [2026-06-17] Закрыт раунд P0+P1 багов
+**Решение:** реализованы фиксы по FIX_PLAN.md (B2-B6, H1-H13).
+**Ключевые изменения:**
+- correctStreak теперь сбрасывается при ошибке, KNOWN-карточка при ошибке возвращается в LEARNING
+- errorCount сохраняется в SessionResult (было всегда 0)
+- TTS в Study читает enginePackage и speed из SharedPreferences
+- В Choice убран двойной счёт ошибок (vm.recordError() в onWrong убран — swipeLeft уже инкрементирует repeatCount)
+- inputText/showTranslit в Writing/Dictation сохраняются через rememberSaveable
+- Heavy IO операции вынесены на Dispatchers.IO (ImportDeckUseCase, ExportDeckUseCase, loadDemoDeck, importFromUri)
+- Чтение файла из SAF перенесено в AddDeckViewModel.importFromUri — главный поток не блокируется
+- Имя файла при импорте берётся из OpenableColumns.DISPLAY_NAME, fallback — lastPathSegment
+- MIME фильтр пикера сужен до text/* + массив MIME типов CSV; добавлена базовая проверка содержимого
+- Все записи настроек пишутся в prefs централизованно в MainActivity — SettingsScreen только вызывает колбэки
+- TtsManager закрывается через DisposableEffect в MainActivity при пересоздании Activity
+- allowBackup=false (соответствие "без облака" из CLAUDE.md)
+- exportSchema=true, schemas сохраняются в app/schemas/ (1.json уже закоммичен)
+- Атомарная вставка карточек+прогресса через db.withTransaction в DeckRepository
+- CardDao.insertCards возвращает List<Long> — хрупкий getCardsByDeckOnce убран
+- finalDurationSeconds в StudyUiState — время на экране завершения не тикает при рекомпозе
+- Подпись "рекорд серии" → "макс. дней" (соответствует streak_max = дни)
+- Запасные дистракторы GENERIC_DISTRACTORS для Choice на колодах < 4 уникальных переводов
+
+### [2026-06-17] Обновление архитектуры Repository
+**Решение:** DeckRepository теперь принимает AppDatabase? в конструкторе (опциональный параметр, default = null),
+чтобы использовать db.withTransaction. Все места создания DeckRepository обновлены — передают db.
+**Причина:** withTransaction требует AppDatabase напрямую, не может работать только через DAO-интерфейсы.
+
 ---
 
 ## Рабочий процесс с git
@@ -143,7 +170,7 @@ git push
 1. ~~**Демо-колода при первом запуске**~~ ✅ коммит f92aefd
 2. ~~**Ручное добавление + импорт из файла**~~ ✅ коммит 424f204
 3. ~~**Геймификация**~~ ✅ коммит b6f65b9
-4. **Экспорт/импорт резервной копии**
+4. ~~**Экспорт/импорт резервной копии**~~ ✅ коммит 831b335
 5. **Глагольные карточки**
 
 ---
